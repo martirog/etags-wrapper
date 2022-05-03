@@ -1,0 +1,54 @@
+* Etags Wrappher
+  Simple etags wrapper to automate TAGS generation from different modes
+
+** variables:
+   name:    etags-wrapper-switche-def
+   default: nil
+   doc:     "define how ctags should find system verilog tags"
+            This is just a list of switches you want to be added to etags like
+            "--regex" if you are using a language not already defined in etags
+
+   name:    defvar etags-wrapper-path-to-repos
+   default: nil
+   doc:     "list of cons: repos to search for systemverilog files . exclude list"
+            a list of cons cells (path/to/repo/ . (list of exclude patterns))
+            the exclutions are used to exclude directories in the repo youo are pointing to
+            this can for example be the .git directory
+
+   name:    defvar etags-wrapper-file-extention
+   default: nil
+   doc:     "file extentions to use in the search for files to tag"
+            list of file extentions to deside which files you use in building the tags
+
+   name:    etags-wrapper-tag-path
+   default: (concat (getenv "HOME") "/")
+   doc:     "path to puth the TAGS file"
+            Where to put the TAGS files.
+
+   name:    defvar etags-wrapper-tag-file-post-fix
+   default: "etags_TAGS"
+   doc:     "name of the TAGS file"
+            extention to teh tagfile so that different modes can use different files
+
+   name:    etags-wrapper-use-vc-root-for-tags
+   default: t
+   doc:     "if not etags-wrapper-path-to-repos is set use current repo of the file you are in"
+            use emacs VC to determin where the root of the current repo you are in. if you have not
+            spesified a list of repos to search.
+
+** functions
+*** the main ones are:
+
+**** etags-wrapper-generate-tags-list (repo-list)
+     generates the list of TAGS files that should be used with the current settings
+
+**** etags-wrapper-regen-tags (regen_all)
+     generate the TAGS files for the current settings
+
+*** secondary:
+**** etags-wrapper-check-for-tags-table
+     check if there are TAGS tables built
+
+** overloads
+*** xref-find-definitions (around refresh-etags activate)
+    if no TAGS table is available then then build it
