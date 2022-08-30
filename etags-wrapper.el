@@ -37,12 +37,15 @@
 (defvar etags-wrapper-use-vc-root-for-tags t
   "if not etags-wrapper-path-to-repos is set use current repo of the file you are in")
 
+(defvar etags-wrapper-print-cmd nil
+  "print all run commands to the *Messeges* buffer")
+
 ;; Generate commandline to run etags
 (defun etags-wrapper--run-etags (repo exclutions ctags-switches extentions tag-file)
   "Generate the find/etags commandline and run it"
   (let ((cmd "find")
         (first t))
-    (setq cmd (concat cmd " " repo))
+    (setq cmd (concat cmd " " repo "/"))  ; add "/" in case you have directory ending in .something
                                         ; iterate over paths in the repo to ignore
     (let ((first_it t))
       (dolist (elem exclutions cmd)
@@ -69,10 +72,14 @@
         (setq cmd (concat cmd " \\) -print"))))
                                         ; add ctags command
     (let ((etags-run (car (directory-files (invocation-directory) t ".*etags"))))
+      (unless etags-run
+          (setq etags-run "etags"))
       (setq cmd (concat cmd " | xargs " etags-run " -a"))) ; a hack for now
     (dolist (elem ctags-switches cmd)
       (setq cmd (concat cmd " " elem)))
     (setq cmd (concat cmd " -o " tag-file))
+    (if etags-wrapper-print-cmd
+        (message cmd))
     (shell-command cmd)))
 
 ;; generate tag-file-name
