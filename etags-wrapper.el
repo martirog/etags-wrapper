@@ -80,7 +80,9 @@
     (setq cmd (concat cmd " -o " tag-file))
     (if etags-wrapper-print-cmd
         (message cmd))
-    (shell-command cmd)))
+    (if (tramp-tramp-file-p (buffer-file-name (current-buffer)))
+        (tramp-handle-shell-command cmd)
+      (shell-command cmd))))
 
 ;; generate tag-file-name
 (defun etags-wrapper--generate-tag-file-name (tag-repo)
