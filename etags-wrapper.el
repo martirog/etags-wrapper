@@ -130,6 +130,16 @@
              (tag-name (etags-wrapper--generate-tag-file-name repo)))
         (add-to-list 'res tag-name)))))
 
+(defun etags-wrapper-get-tag-file-list ()
+  "get list of tagfiles"
+  (if (not (null etags-wrapper-path-to-repos))
+      (etags-wrapper-generate-tags-list etags-wrapper-path-to-repos)
+    (if (null etags-wrapper-use-vc-root-for-tags)
+        nil
+      ; probably need a error check on vc-root-dir
+      (add-to-list 'etags-wrapper-path-to-repos (cons (vc-root-dir) nil))
+      (etags-wrapper-generate-tags-list etags-wrapper-path-to-repos))))
+
 (defun etags-wrapper-check-for-tags-table ()
   "check if the tags are loaded and if not check if it can be regenerated"
   ;This needs update to check if vc-root fails
@@ -146,5 +156,6 @@
           t)
          (t nil))
       t))
+
 
 (provide 'etags-wrapper)
