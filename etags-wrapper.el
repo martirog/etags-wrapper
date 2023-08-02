@@ -17,17 +17,20 @@
 ;;    "--regex=\"/^.*}[ \\t]*\\([0-9a-zA-Z\\$_]+\\)[ \\t]*;/\\1/\""
 ;;    "--regex=\"/^.*)[ \\t]*\\([0-9a-zA-Z\\$_]+\\)[ \\t]*;/\\1/\""
 ;;    "--regex=\"/^[ \\t]*\\(parameter\\|localparam\\).*[ \\t]+\\([0-9a-zA-Z\\$_]+\\)[ \\t]*=.*;/\\2/\"")
+(require 'cl-lib)
+
 (defvar etags-wrapper-switche-def nil
   "define how ctags should find system verilog tags")
 
 (defvar etags-wrapper-path-to-repos nil
-  "list of cons: repos to search for systemverilog files . exclude list")
+  "list of cons: (list of) repos to search for systemverilog files . cons exclude list . static(or continuesly changing)")
 
 ;; Example of use
 ;;  '("v" "sv" "vh" "svh")
 (defvar etags-wrapper-file-extention nil
   "file extentions to use in the search for files to tag")
 
+;; TODO: make this a function in case you are using tramp
 (defvar etags-wrapper-tag-path (concat (getenv "HOME") "/") ;nil
   "path to puth the TAGS file")
 
@@ -40,11 +43,31 @@
 (defvar etags-wrapper-print-cmd nil
   "print all run commands to the *Messeges* buffer")
 
+(defvar etags-wrapper-executagble nil
+  "spesefy which etags executable to use")
+
+(defvar etags-wrapper-relative-paths nil
+  "use relative paths output file")
+
+;; Get etags executable
+(defun etags-wrapper--get-etags-executable ()
+  (or etags-wrapper-executagble
+      (if (file-remote-p default-directory)
+          "etags"
+        (or (car (directory-files (invocation-directory) t ".*etags"))
+            "etags"))))
+
 ;; Generate commandline to run etags
-(defun etags-wrapper--run-etags (repo exclutions ctags-switches extentions tag-file)
+(defun etags-wrapper--run-etags (repo exclutions ctags-switches extentions tag-file relative-paths)
   "Generate the find/etags commandline and run it"
-  (let ((cmd "find")
+  (let ((cmd "")
         (first t))
+
+    (when relative-paths
+      (setq cmd (concat cmd "pushd " (file-name-directory tag-file) "&& ")))
+
+    (setq cmd (concat cmd "find"))
+
     (setq cmd (concat cmd " " repo "/"))  ; add "/" in case you have directory ending in .something
                                         ; iterate over paths in the repo to ignore
     (let ((first_it t))
@@ -71,13 +94,18 @@
       (when (null first_it)
         (setq cmd (concat cmd " \\) -print"))))
                                         ; add ctags command
-    (let ((etags-run (car (directory-files (invocation-directory) t ".*etags"))))
-      (unless etags-run
-          (setq etags-run "etags"))
+    (when relative-paths
+      (setq cmd (concat cmd " | xargs realpath --relative-to " (file-name-directory tag-file))))
+
+    (let ((etags-run (etags-wrapper--get-etags-executable)))
+      (message etags-run)
       (setq cmd (concat cmd " | xargs " etags-run " -a"))) ; a hack for now
+
     (dolist (elem ctags-switches cmd)
       (setq cmd (concat cmd " " elem)))
+
     (setq cmd (concat cmd " -o " tag-file))
+
     (if etags-wrapper-print-cmd
         (message cmd))
     (if (tramp-tramp-file-p (buffer-file-name (current-buffer)))
@@ -85,9 +113,15 @@
       (shell-command cmd))))
 
 ;; generate tag-file-name
-(defun etags-wrapper--generate-tag-file-name (tag-repo)
-  "generate the tag file name for a given path"
-  (concat etags-wrapper-tag-path "/" (md5 tag-repo) etags-wrapper-tag-file-post-fix))
+(defun etags-wrapper--generate-tag-file-name (tag-repo full)
+  "generate the tag file name for a given path. full indicates weter to use full tramp path if present"
+  (if (or (not full) (not (file-remote-p default-directory)))
+      (concat etags-wrapper-tag-path "/" (md5 tag-repo) etags-wrapper-tag-file-post-fix)
+    ;; Need FIX for etags-wrapper-tag-path. as this only work today if you set it correctly at the start
+    ;; if not set it should finbd home at the current connection
+    (let ((vec (tramp-dissect-file-name (buffer-file-name (current-buffer)))))
+      (setf (tramp-file-name-localname vec) (concat etags-wrapper-tag-path "/" (md5 tag-repo) etags-wrapper-tag-file-post-fix))
+      (tramp-make-tramp-file-name vec))))
 
 (defun etags-wrapper-regen-tags(regen_all)
   "regenerate the tags file using ctags. so you need to have ctags in your path for this to work"
@@ -101,13 +135,14 @@
             (repo (car rep))
             (ctags-switches etags-wrapper-switche-def)
             (extentions etags-wrapper-file-extention)
-            (tag-file (etags-wrapper--generate-tag-file-name (car rep))))
+            (tag-file (etags-wrapper--generate-tag-file-name (car rep) nil)))
         (when (or (not static) regen_all)
           (if (file-exists-p tag-file)
               (progn
                 (message "deleting file: %s" tag-file)
                 (delete-file tag-file)))
-          (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file))))))
+          ;; make sure to always use relative paths if you are using tramp. might change in the future
+          (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file etags-wrapper-relative-paths))))))
 
 (defadvice xref-find-definitions (around refresh-etags activate)
    "Rerun etags and reload tags if tag not found and redo find-tag.
@@ -127,7 +162,7 @@
       (let* ((exclutions (car (cdr rep)))
              (static (cdr (cdr rep)))
              (repo (car rep))
-             (tag-name (etags-wrapper--generate-tag-file-name repo)))
+             (tag-name (etags-wrapper--generate-tag-file-name repo t)))
         (add-to-list 'res tag-name)))))
 
 (defun etags-wrapper-get-tag-file-list ()
