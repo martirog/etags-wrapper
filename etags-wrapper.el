@@ -144,17 +144,17 @@
           ;; make sure to always use relative paths if you are using tramp. might change in the future
           (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file etags-wrapper-relative-paths))))))
 
-(defadvice xref-find-definitions (around refresh-etags activate)
-   "Rerun etags and reload tags if tag not found and redo find-tag.
-   If buffer is modified, ask about save before running etags."
-   (condition-case err
-       ad-do-it
-     (error (and (buffer-modified-p)
-                 (not (ding))
-                 (y-or-n-p "Buffer is modified, save it? ")
-                 (save-buffer))
-            (etags-wrapper-regen-tags nil)
-            ad-do-it)))
+;(defadvice xref-find-definitions (around refresh-etags activate)
+;   "Rerun etags and reload tags if tag not found and redo find-tag.
+;   If buffer is modified, ask about save before running etags."
+;   (condition-case err
+;       ad-do-it
+;     (error (and (buffer-modified-p)
+;                 (not (ding))
+;                 (y-or-n-p "Buffer is modified, save it? ")
+;                 (save-buffer))
+;            (etags-wrapper-regen-tags nil)
+;            ad-do-it)))
 
 (defun etags-wrapper-generate-tags-list (repo-list)
   (let ((res '()))
