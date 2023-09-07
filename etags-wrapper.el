@@ -161,7 +161,7 @@
 (defun etags-wrapper--set-element-tags-list (repo-info)
   "extract the repo path from the data structure. and generate the tag file name. simplefy with cl-struct"
   (let ((repo (car repo-info)))
-    (etags-wrapper--generate-tag-file-name repo)))
+    (etags-wrapper--generate-tag-file-name repo t)))
 
 (defun etags-wrapper-generate-tags-list (repo-list)
   "generate list of tag files"
