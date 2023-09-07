@@ -158,14 +158,14 @@
 ;            (etags-wrapper-regen-tags nil)
 ;            ad-do-it)))
 
+(defun etags-wrapper--set-element-tags-list (repo-info)
+  "extract the repo path from the data structure. and generate the tag file name. simplefy with cl-struct"
+  (let ((repo (car repo-info)))
+    (etags-wrapper--generate-tag-file-name repo)))
+
 (defun etags-wrapper-generate-tags-list (repo-list)
-  (let ((res '()))
-    (dolist (rep repo-list res)
-      (let* ((exclutions (car (cdr rep)))
-             (static (cdr (cdr rep)))
-             (repo (car rep))
-             (tag-name (etags-wrapper--generate-tag-file-name repo t)))
-        (add-to-list 'res tag-name)))))
+  "generate list of tag files"
+  (mapcar #'etags-wrapper--set-element-tags-list repo-list))
 
 (defun etags-wrapper-get-tag-file-list ()
   "get list of tagfiles"
