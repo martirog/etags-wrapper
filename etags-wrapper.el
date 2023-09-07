@@ -18,6 +18,7 @@
 ;;    "--regex=\"/^.*)[ \\t]*\\([0-9a-zA-Z\\$_]+\\)[ \\t]*;/\\1/\""
 ;;    "--regex=\"/^[ \\t]*\\(parameter\\|localparam\\).*[ \\t]+\\([0-9a-zA-Z\\$_]+\\)[ \\t]*=.*;/\\2/\"")
 (require 'cl-lib)
+(require 'tramp)
 
 (defvar etags-wrapper-switche-def nil
   "define how ctags should find system verilog tags")
@@ -137,12 +138,13 @@
             (extentions etags-wrapper-file-extention)
             (tag-file (etags-wrapper--generate-tag-file-name (car rep) nil)))
         (when (or (not static) regen_all)
-          (if (file-exists-p tag-file)
-              (progn
-                (message "deleting file: %s" tag-file)
-                (delete-file tag-file)))
-          ;; make sure to always use relative paths if you are using tramp. might change in the future
-          (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file etags-wrapper-relative-paths))))))
+          (let ((tag-file-full (etags-wrapper--generate-tag-file-name (car rep) t)))
+            (if (file-exists-p tag-file-full)
+                (progn
+                  (message "deleting file: %s" tag-file)
+                  (delete-file tag-file-full)))
+            ;; make sure to always use relative paths if you are using tramp. might change in the future
+            (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file etags-wrapper-relative-paths)))))))
 
 ;(defadvice xref-find-definitions (around refresh-etags activate)
 ;   "Rerun etags and reload tags if tag not found and redo find-tag.
