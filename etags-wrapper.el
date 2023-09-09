@@ -126,7 +126,7 @@
 
 (defun etags-wrapper-regen-tags(regen_all)
   "regenerate the tags file using ctags. so you need to have ctags in your path for this to work"
-  (interactive "p")
+  (interactive "P")
   (let ((repos etags-wrapper-path-to-repos))
     ; delete excisting TAGS file
     ; iterate over repos
