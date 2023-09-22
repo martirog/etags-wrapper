@@ -136,15 +136,17 @@
             (repo (car rep))
             (ctags-switches etags-wrapper-switche-def)
             (extentions etags-wrapper-file-extention)
-            (tag-file (etags-wrapper--generate-tag-file-name (car rep) nil)))
-        (when (or (not static) regen_all)
-          (let ((tag-file-full (etags-wrapper--generate-tag-file-name (car rep) t)))
-            (if (file-exists-p tag-file-full)
-                (progn
-                  (message "deleting file: %s" tag-file)
-                  (delete-file tag-file-full)))
-            ;; make sure to always use relative paths if you are using tramp. might change in the future
-            (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file etags-wrapper-relative-paths)))))))
+            (tag-file (etags-wrapper--generate-tag-file-name (car rep) nil))
+            (tag-file-full (etags-wrapper--generate-tag-file-name (car rep) t))
+            file-exists)
+        (setq file-exists (file-exists-p tag-file-full))
+        (when (or (not static) (not file-exists) regen_all)
+          (if file-exists
+              (progn
+                (message "deleting file: %s" tag-file)
+                (delete-file tag-file-full)))
+          ;; make sure to always use relative paths if you are using tramp. might change in the future
+          (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file etags-wrapper-relative-paths))))))
 
 ;(defadvice xref-find-definitions (around refresh-etags activate)
 ;   "Rerun etags and reload tags if tag not found and redo find-tag.
