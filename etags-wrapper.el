@@ -20,11 +20,22 @@
 (require 'cl-lib)
 (require 'tramp)
 
+(defvar etags-wrapper-etags-repos nil
+  "list of repos to tag")
+
+(cl-defstruct etags-wrapper-etags-repo-info
+  root        ; path to repo
+  exclutions  ; paths not to go down
+  switches    ; switches to find
+  static      ; the repo willl not change
+  glob        ; glob extention to repo
+  pre-switch) ; switch to put right after find
+
 (defvar etags-wrapper-switche-def nil
   "define how ctags should find system verilog tags")
 
-(defvar etags-wrapper-path-to-repos nil
-  "list of cons: (list of) repos to search for systemverilog files . cons exclude list . static(or continuesly changing)")
+;(defvar etags-wrapper-path-to-repos nil
+;  "list of cons: (list of) repos to search for systemverilog files . cons exclude list . static(or continuesly changing)")
 
 ;; Example of use
 ;;  '("v" "sv" "vh" "svh")
@@ -39,7 +50,7 @@
   "name of the TAGS file")
 
 (defvar etags-wrapper-use-vc-root-for-tags t
-  "if not etags-wrapper-path-to-repos is set use current repo of the file you are in")
+  "if not etags-wrapper-etags-repos is set use current repo of the file you are in")
 
 (defvar etags-wrapper-print-cmd nil
   "print all run commands to the *Messeges* buffer")
@@ -127,26 +138,27 @@
 (defun etags-wrapper-regen-tags(regen_all)
   "regenerate the tags file using ctags. so you need to have ctags in your path for this to work"
   (interactive "P")
-  (let ((repos etags-wrapper-path-to-repos))
-    ; delete excisting TAGS file
-    ; iterate over repos
-    (dolist (rep repos)
-      (let ((exclutions (car (cdr rep)))
-            (static (cdr (cdr rep)))
-            (repo (car rep))
-            (ctags-switches etags-wrapper-switche-def)
-            (extentions etags-wrapper-file-extention)
-            (tag-file (etags-wrapper--generate-tag-file-name (car rep) nil))
-            (tag-file-full (etags-wrapper--generate-tag-file-name (car rep) t))
-            file-exists)
-        (setq file-exists (file-exists-p tag-file-full))
-        (when (or (not static) (not file-exists) regen_all)
-          (if file-exists
-              (progn
-                (message "deleting file: %s" tag-file)
-                (delete-file tag-file-full)))
-          ;; make sure to always use relative paths if you are using tramp. might change in the future
-          (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file etags-wrapper-relative-paths))))))
+; delete excisting TAGS file
+; iterate over repos
+  (dolist (rep etags-wrapper-etags-repos)
+    (let* ((exclutions (etags-wrapper-etags-repo-info-exclutions rep))
+           (static (etags-wrapper-etags-repo-info-static rep))
+           (repo (etags-wrapper-etags-repo-info-root rep))
+           (ctags-switches (append
+                            (etags-wrapper-etags-repo-info-switches rep)
+                            etags-wrapper-switche-def))
+           (extentions etags-wrapper-file-extention)
+           (tag-file (etags-wrapper--generate-tag-file-name repo nil))
+           (tag-file-full (etags-wrapper--generate-tag-file-name repo t))
+           file-exists)
+      (setq file-exists (file-exists-p tag-file-full))
+      (when (or (not static) (not file-exists) regen_all)
+        (if file-exists
+            (progn
+              (message "deleting file: %s" tag-file)
+              (delete-file tag-file-full)))
+        ;; make sure to always use relative paths if you are using tramp. might change in the future
+        (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file etags-wrapper-relative-paths)))))
 
 ;(defadvice xref-find-definitions (around refresh-etags activate)
 ;   "Rerun etags and reload tags if tag not found and redo find-tag.
@@ -162,7 +174,7 @@
 
 (defun etags-wrapper--set-element-tags-list (repo-info)
   "extract the repo path from the data structure. and generate the tag file name. simplefy with cl-struct"
-  (let ((repo (car repo-info)))
+  (let ((repo (etags-wrapper-etags-repo-info-root repo-info)))
     (etags-wrapper--generate-tag-file-name repo t)))
 
 (defun etags-wrapper-generate-tags-list (repo-list)
@@ -171,27 +183,27 @@
 
 (defun etags-wrapper-get-tag-file-list ()
   "get list of tagfiles"
-  (if (not (null etags-wrapper-path-to-repos))
-      (etags-wrapper-generate-tags-list etags-wrapper-path-to-repos)
+  (if (not (null etags-wrapper-etags-repos))
+      (etags-wrapper-generate-tags-list etags-wrapper-etags-repos)
     (if (null etags-wrapper-use-vc-root-for-tags)
         nil
       ; probably need a error check on vc-root-dir
-      (add-to-list 'etags-wrapper-path-to-repos (cons (vc-root-dir) nil))
-      (etags-wrapper-generate-tags-list etags-wrapper-path-to-repos))))
+      (add-to-list 'etags-wrapper-etags-repos (make-etags-wrapper-etags-repo-info :root (vc-root-dir)))
+      (etags-wrapper-generate-tags-list etags-wrapper-etags-repos))))
 
 (defun etags-wrapper-check-for-tags-table ()
   "check if the tags are loaded and if not check if it can be regenerated"
   ;This needs update to check if vc-root fails
     (if (null (get-buffer etags-wrapper-tag-file-name))
         (cond
-         ((not (null etags-wrapper-path-to-repos))
+         ((not (null etags-wrapper-etags-repos))
           (etags-wrapper-regen-tags nil)
-          (setq tags-table-list (etags-wrapper-generate-tags-list etags-wrapper-path-to-repos))
+          (setq tags-table-list (etags-wrapper-generate-tags-list etags-wrapper-etags-repos))
           t)
          ((not (null etags-wrapper-use-vc-root-for-tags))
-          (add-to-list 'etags-wrapper-path-to-repos (cons (vc-root-dir) nil))
+          (add-to-list 'etags-wrapper-etags-repos (make-etags-wrapper-etags-repo-info :root (vc-root-dir)))
           (etags-wrapper-regen-tags nil)
-          (setq tags-table-list (etags-wrapper-generate-tags-list etags-wrapper-path-to-repos))
+          (setq tags-table-list (etags-wrapper-generate-tags-list etags-wrapper-etags-repos))
           t)
          (t nil))
       t))
