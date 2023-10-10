@@ -70,17 +70,21 @@
             "etags"))))
 
 ;; Generate commandline to run etags
-(defun etags-wrapper--run-etags (repo exclutions ctags-switches extentions tag-file relative-paths)
+(defun etags-wrapper--run-etags (repo exclutions ctags-switches extentions tag-file relative-paths ctags-pre-switch globs)
   "Generate the find/etags commandline and run it"
   (let ((cmd "")
         (first t))
 
+    (message ctags-pre-switch globs)
     (when relative-paths
       (setq cmd (concat cmd "pushd " (file-name-directory tag-file) "&& ")))
 
     (setq cmd (concat cmd "find"))
 
-    (setq cmd (concat cmd " " repo "/"))  ; add "/" in case you have directory ending in .something
+    (when ctags-pre-switch
+        (setq cmd (concat cmd " " ctags-pre-switch)))
+
+    (setq cmd (concat cmd " " repo "/" globs))  ; add "/" in case you have directory ending in .something
                                         ; iterate over paths in the repo to ignore
     (let ((first_it t))
       (dolist (elem exclutions cmd)
@@ -147,6 +151,8 @@
            (ctags-switches (append
                             (etags-wrapper-etags-repo-info-switches rep)
                             etags-wrapper-switche-def))
+           (ctags-pre-switch (etags-wrapper-etags-repo-info-pre-switch rep))
+           (globs (etags-wrapper-etags-repo-info-glob rep))
            (extentions etags-wrapper-file-extention)
            (tag-file (etags-wrapper--generate-tag-file-name repo nil))
            (tag-file-full (etags-wrapper--generate-tag-file-name repo t))
@@ -158,7 +164,7 @@
               (message "deleting file: %s" tag-file)
               (delete-file tag-file-full)))
         ;; make sure to always use relative paths if you are using tramp. might change in the future
-        (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file etags-wrapper-relative-paths)))))
+        (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file etags-wrapper-relative-paths ctags-pre-switch globs)))))
 
 ;(defadvice xref-find-definitions (around refresh-etags activate)
 ;   "Rerun etags and reload tags if tag not found and redo find-tag.
