@@ -164,7 +164,8 @@
               (message "deleting file: %s" tag-file)
               (delete-file tag-file-full)))
         ;; make sure to always use relative paths if you are using tramp. might change in the future
-        (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file etags-wrapper-relative-paths ctags-pre-switch globs)))))
+        (etags-wrapper--run-etags repo exclutions ctags-switches extentions tag-file etags-wrapper-relative-paths ctags-pre-switch globs))))
+  (tags-reset-tags-table))
 
 ;(defadvice xref-find-definitions (around refresh-etags activate)
 ;   "Rerun etags and reload tags if tag not found and redo find-tag.
