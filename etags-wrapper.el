@@ -66,7 +66,7 @@
   (or etags-wrapper-executagble
       (if (file-remote-p default-directory)
           "etags"
-        (or (car (directory-files (invocation-directory) t ".*etags"))
+        (or (car (directory-files invocation-directory t ".*etags"))
             "etags"))))
 
 ;; Generate commandline to run etags
@@ -75,7 +75,6 @@
   (let ((cmd "")
         (first t))
 
-    (message ctags-pre-switch globs)
     (when relative-paths
       (setq cmd (concat cmd "pushd " (file-name-directory tag-file) "&& ")))
 
@@ -114,7 +113,6 @@
       (setq cmd (concat cmd " | xargs realpath --relative-to " (file-name-directory tag-file))))
 
     (let ((etags-run (etags-wrapper--get-etags-executable)))
-      (message etags-run)
       (setq cmd (concat cmd " | xargs " etags-run " -a"))) ; a hack for now
 
     (dolist (elem ctags-switches cmd)
@@ -200,8 +198,8 @@
 
 (defun etags-wrapper-check-for-tags-table ()
   "check if the tags are loaded and if not check if it can be regenerated"
-  ;This needs update to check if vc-root fails
-    (if (null (get-buffer etags-wrapper-tag-file-name))
+  ;This needs update to check if vc-root fails, and to check all and correct tags buffers
+    (if (null (get-buffer tags-file-name))
         (cond
          ((not (null etags-wrapper-etags-repos))
           (etags-wrapper-regen-tags nil)
